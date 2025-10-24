@@ -58,7 +58,7 @@ Add to your `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "bsl-lint": {
+    "bsl-mcp": {
       "command": "python",
       "args": ["-m", "mcp_bsl.server"],
       "env": {
