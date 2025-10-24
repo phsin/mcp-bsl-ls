@@ -62,8 +62,11 @@ Add to your `~/.cursor/mcp.json`:
       "command": "python",
       "args": ["-m", "mcp_bsl.server"],
       "env": {
-        "BSL_JAR": "C:\\1C\\AI\\bsl\\bsl-language-server-0.24.2-exec.jar"
-      }
+        "BSL_JAR": "C:\\1C\\AI\\bsl\\bsl-language-server-0.24.2-exec.jar",
+        "BSL_MEMORY_MB": "4096",
+        "BSL_CONFIG": "C:\\1C\\AI\\bsl\\.bsl-language-server.json"
+      },
+      "debug": true
     }
   }
 }
@@ -87,9 +90,7 @@ Run BSL analysis on source directory or file.
 {
   "name": "bsl_analyze",
   "arguments": {
-    "srcDir": "C:\\1C\\MyProject\\src",
-    "configPath": "C:\\1C\\MyProject\\.bsl-language-server.json",
-    "memoryMb": 8192
+    "srcDir": "C:\\1C\\MyProject\\src"
   }
 }
 ```
