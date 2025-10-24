@@ -5,6 +5,7 @@ import json
 import logging
 import sys
 from typing import Any, Dict, List, Optional
+from pathlib import Path
 
 from mcp.server import Server
 from mcp.server.models import InitializationOptions, ServerCapabilities
@@ -32,21 +33,39 @@ class BSLMCPServer:
     
     def _setup_logger(self) -> logging.Logger:
         """Setup logger for debugging."""
+        import os
+        
         logger = logging.getLogger("bsl-mcp-server")
-        logger.setLevel(logging.DEBUG)
         
-        # Create console handler
-        handler = logging.StreamHandler(sys.stderr)
-        handler.setLevel(logging.DEBUG)
+        # Get log level from environment variable, default to WARNING
+        # This prevents debug spam in Cursor UI
+        log_level_name = os.environ.get("BSL_LOG_LEVEL", "WARNING").upper()
+        log_level = getattr(logging, log_level_name, logging.WARNING)
+        logger.setLevel(log_level)
         
-        # Create formatter
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        handler.setFormatter(formatter)
+        # Prevent propagation to parent loggers to avoid duplicate logs
+        logger.propagate = False
         
-        # Add handler to logger
-        logger.addHandler(handler)
+        # Clear existing handlers to prevent duplicate logging
+        # This is important because the logger is global and handlers accumulate
+        if logger.handlers:
+            logger.handlers.clear()
+        
+        # Only add handler if logger doesn't have any handlers
+        # This prevents duplication when logger is reused
+        if not logger.handlers:
+            # Create console handler
+            handler = logging.StreamHandler(sys.stderr)
+            handler.setLevel(log_level)
+            
+            # Create formatter
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            handler.setFormatter(formatter)
+            
+            # Add handler to logger
+            logger.addHandler(handler)
         
         return logger
     
@@ -130,6 +149,13 @@ class BSLMCPServer:
             self.logger.error("srcDir parameter is required but not provided")
             return [TextContent(type="text", text="Error: srcDir parameter is required")]
         
+        # If src_dir is a file, use its parent directory instead
+        path = Path(src_dir)
+        if path.exists() and path.is_file():
+            self.logger.info(f"srcDir is a file: {src_dir}. Using parent directory instead.")
+            src_dir = str(path.parent)
+            self.logger.info(f"Analyzing parent directory: {src_dir}")
+        
         # Run analysis in thread pool to avoid blocking
         self.logger.debug("Running analysis in thread pool")
         loop = asyncio.get_event_loop()
@@ -153,6 +179,13 @@ class BSLMCPServer:
         if not src_dir:
             self.logger.error("srcDir parameter is required but not provided")
             return [TextContent(type="text", text="Error: srcDir parameter is required")]
+        
+        # If src_dir is a file, use its parent directory instead
+        path = Path(src_dir)
+        if path.exists() and path.is_file():
+            self.logger.info(f"srcDir is a file: {src_dir}. Using parent directory instead.")
+            src_dir = str(path.parent)
+            self.logger.info(f"Formatting parent directory: {src_dir}")
         
         # Run formatting in thread pool to avoid blocking
         self.logger.debug("Running formatting in thread pool")

@@ -48,7 +48,8 @@ export BSL_JAR="/path/to/bsl-language-server-0.24.2-exec.jar"
 
 Optional environment variables:
 ```bash
-export BSL_MEMORY_MB="4096"  # JVM memory limit in MB (default: 4096)
+export BSL_MEMORY_MB="4096"    # JVM memory limit in MB (default: 4096)
+export BSL_LOG_LEVEL="ERROR"   # Logging level: ERROR, WARNING, INFO, DEBUG (default: WARNING)
 ```
 
 ### MCP Configuration
@@ -64,13 +65,16 @@ Add to your `~/.cursor/mcp.json`:
       "env": {
         "BSL_JAR": "C:\\1C\\AI\\bsl\\bsl-language-server-0.24.2-exec.jar",
         "BSL_MEMORY_MB": "4096",
-        "BSL_CONFIG": "C:\\1C\\AI\\bsl\\.bsl-language-server.json"
+        "BSL_CONFIG": "C:\\1C\\AI\\bsl\\.bsl-language-server.json",
+        "BSL_LOG_LEVEL": "ERROR"
       },
-      "debug": true
+      "debug": false
     }
   }
 }
 ```
+
+> **Note:** `BSL_LOG_LEVEL` is set to `ERROR` to minimize log output in Cursor IDE. Use `DEBUG` for troubleshooting.
 
 ## Usage
 
@@ -207,6 +211,9 @@ python -m build
    - Ensure the JAR file exists and is readable
 
 2. **"Source path does not exist"**
+   - **Always use absolute paths** (e.g., `C:\dev\project\src\Module.bsl`)
+   - Relative paths may not work correctly with MCP server
+   - See [PATH_USAGE_GUIDE.md](PATH_USAGE_GUIDE.md) for detailed path usage instructions
    - Verify the `srcDir` parameter points to an existing file or directory
    - Check file permissions
 
@@ -219,12 +226,39 @@ python -m build
    - Check JVM memory limits are reasonable
    - Ensure BSL Language Server JAR is compatible with your Java version
 
-### Debug Mode
+5. **Seeing "ERROR: BSL analysis stderr detected"**
+   - This was fixed - progress bar output is now filtered out
+   - Only real errors are shown
+   - Update to the latest version if you see this issue
 
-Enable debug logging by setting environment variable:
-```bash
-export DEBUG=true
+6. **Log messages appearing twice**
+   - This was fixed - duplicate handler accumulation resolved
+   - Each log message now appears exactly once
+   - See [FIX_DUPLICATE_LOGS.md](FIX_DUPLICATE_LOGS.md) for details
+
+### Debug Mode and Logging
+
+The server supports different logging levels controlled via the `BSL_LOG_LEVEL` environment variable:
+
+- **ERROR** (recommended for production) - Only critical errors
+- **WARNING** (default) - Warnings and errors
+- **INFO** - Informational messages
+- **DEBUG** - Detailed debug information
+
+To enable debug logging in MCP configuration:
+```json
+{
+  "mcpServers": {
+    "bsl-mcp": {
+      "env": {
+        "BSL_LOG_LEVEL": "DEBUG"
+      }
+    }
+  }
+}
 ```
+
+For more details, see [LOGGING_CONFIGURATION.md](LOGGING_CONFIGURATION.md).
 
 ## License
 

@@ -103,34 +103,72 @@ class BSLRunner:
             self.logger.info(f"Analysis command completed with return code: {result.returncode}")
             self.logger.debug(f"STDOUT length: {len(result.stdout)}, STDERR length: {len(result.stderr)}")
             
-            # Log stderr for debugging (BSL server logs)
+            # Check for stderr - filter out progress bar messages
             if result.stderr:
                 stderr_lines = result.stderr.split('\n')
-                self.logger.debug(f"STDERR first 5 lines: {stderr_lines[:5]}")
+                # Filter out empty lines and progress bar messages
+                error_lines = [
+                    line for line in stderr_lines 
+                    if line.strip() and not line.strip().startswith('Analyzing files')
+                ]
+                
+                # Only treat as error if there are real error messages (not just progress)
+                if error_lines:
+                    self.logger.error(f"BSL analysis errors detected: {error_lines[:5]}")
+                    return BSLResult(
+                        success=False,
+                        diagnostics=[],
+                        output=result.stdout,
+                        error=f"BSL analysis errors: {chr(10).join(error_lines)}",
+                        files_processed=0
+                    )
+                else:
+                    # Only progress messages, not actual errors
+                    self.logger.debug(f"BSL analysis progress: {stderr_lines[:2]}")
             
             # JSON reporter creates bsl-json.json file in working directory
             json_report_path = work_dir / "bsl-json.json"
             json_content = ""
             
-            if json_report_path.exists():
-                self.logger.info(f"Reading JSON report from: {json_report_path}")
-                try:
-                    with open(json_report_path, 'r', encoding='utf-8') as f:
-                        json_content = f.read()
-                    self.logger.debug(f"JSON report file size: {len(json_content)} bytes")
-                    
-                    # Clean up the report file after reading
+            # Check if JSON report exists - if not, return error
+            if not json_report_path.exists():
+                self.logger.error(f"JSON report file not found at: {json_report_path}")
+                return BSLResult(
+                    success=False,
+                    diagnostics=[],
+                    output=result.stdout,
+                    error=f"JSON report file not found at: {json_report_path}",
+                    files_processed=0
+                )
+            
+            # Read JSON report
+            self.logger.info(f"Reading JSON report from: {json_report_path}")
+            try:
+                with open(json_report_path, 'r', encoding='utf-8') as f:
+                    json_content = f.read()
+                self.logger.debug(f"JSON report file size: {len(json_content)} bytes")
+                
+                # Clean up the report file after reading
+                # Keep file in DEBUG mode for inspection
+                is_debug_mode = os.environ.get("BSL_LOG_LEVEL", "WARNING").upper() == "DEBUG"
+                if not is_debug_mode:
                     json_report_path.unlink()
                     self.logger.debug("Removed JSON report file")
-                except Exception as e:
-                    self.logger.warning(f"Failed to read JSON report file: {e}")
-            else:
-                self.logger.warning(f"JSON report file not found at: {json_report_path}")
-                self.logger.debug("Will try to parse from stdout/stderr")
+                else:
+                    self.logger.debug(f"DEBUG mode enabled, keeping JSON report file: {json_report_path}")
+            except Exception as e:
+                self.logger.error(f"Failed to read JSON report file: {e}")
+                return BSLResult(
+                    success=False,
+                    diagnostics=[],
+                    output=result.stdout,
+                    error=f"Failed to read JSON report file: {e}",
+                    files_processed=0
+                )
             
-            # Parse results (from file or stdout/stderr)
+            # Parse results from JSON file
             self.logger.debug("Parsing analysis output")
-            diagnostics = self._parse_analyze_output(json_content or result.stdout, result.stderr)
+            diagnostics = self._parse_analyze_output(json_content, result.stderr)
             files_processed = self._count_processed_files(source_path)
             
             self.logger.info(f"Analysis completed - diagnostics: {len(diagnostics)}, files processed: {files_processed}")
@@ -138,7 +176,7 @@ class BSLRunner:
             return BSLResult(
                 success=result.returncode == 0,
                 diagnostics=diagnostics,
-                output=json_content if json_content else result.stdout,  # Use JSON from file if available
+                output=json_content,
                 error=result.stderr,
                 files_processed=files_processed
             )
@@ -152,12 +190,12 @@ class BSLRunner:
                 error="BSL analysis timed out after 5 minutes"
             )
         except Exception as e:
-            self.logger.error(f"Error running BSL analysis: {str(e)}", exc_info=True)
+            self.logger.error(f"!!!!!!!! Error running BSL analysis: {str(e)}", exc_info=True)
             return BSLResult(
                 success=False,
                 diagnostics=[],
                 output="",
-                error=f"Error running BSL analysis: {str(e)}"
+                error=f"!!!!!!!! Error running BSL analysis: {str(e)}"
             )
     
     def format(self, src_dir: str) -> BSLResult:
@@ -195,6 +233,18 @@ class BSLRunner:
             self.logger.info(f"Formatting command completed with return code: {result.returncode}")
             self.logger.debug(f"STDOUT length: {len(result.stdout)}, STDERR length: {len(result.stderr)}")
             
+            # Filter out progress bar from stderr
+            stderr_filtered = result.stderr
+            if result.stderr:
+                stderr_lines = result.stderr.split('\n')
+                error_lines = [
+                    line for line in stderr_lines 
+                    if line.strip() and not line.strip().startswith('Analyzing files')
+                ]
+                stderr_filtered = '\n'.join(error_lines) if error_lines else ""
+                if not error_lines:
+                    self.logger.debug(f"Format progress: {stderr_lines[:2]}")
+            
             files_processed = self._count_processed_files(source_path)
             self.logger.info(f"Formatting completed - files processed: {files_processed}")
             
@@ -202,7 +252,7 @@ class BSLRunner:
                 success=result.returncode == 0,
                 diagnostics=[],
                 output=result.stdout,
-                error=result.stderr,
+                error=stderr_filtered,
                 files_processed=files_processed
             )
             

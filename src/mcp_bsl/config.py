@@ -69,11 +69,27 @@ def get_config() -> BSLConfig:
 
 
 def validate_source_path(source_path: str) -> pathlib.Path:
-    """Validate source path (file or directory)."""
+    """Validate source path (file or directory).
+    
+    Supports both absolute and relative paths.
+    For relative paths, resolves them from current working directory.
+    """
     path = pathlib.Path(source_path)
     
+    # Try to resolve the path
+    if not path.is_absolute():
+        # Try relative to current working directory
+        path = pathlib.Path.cwd() / path
+    
     if not path.exists():
-        raise ValueError(f"Source path does not exist: {source_path}")
+        # Provide helpful error message
+        cwd = pathlib.Path.cwd()
+        raise ValueError(
+            f"Source path does not exist: {source_path}\n"
+            f"Resolved to: {path}\n"
+            f"Current working directory: {cwd}\n"
+            f"Hint: Use absolute path like 'C:\\path\\to\\file.bsl'"
+        )
     
     # Check if it's a BSL/OS file or directory containing them
     if path.is_file():
