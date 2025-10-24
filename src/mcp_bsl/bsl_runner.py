@@ -235,6 +235,12 @@ class BSLRunner:
         config_path = config_file.resolve().as_posix()
         source_str = str(source_path.resolve())
         
+        # Create temp directory for reports
+        #temp_report_dir = Path(tempfile.gettempdir()) / "bsl_reports"
+        output_path = ( Path(self.config.jar_path).parent ).as_posix()
+        #temp_report_dir.mkdir(exist_ok=True)
+        #output_path = (temp_report_dir / "report").as_posix()
+        
         cmd = [
             'java',
             f'-Xmx{memory_mb}m',
@@ -244,7 +250,7 @@ class BSLRunner:
             '-jar', self.config.jar_path,
             '--analyze',
             '--srcDir', source_str,
-            '--reporter', 'json'
+            '--reporter', 'json',
             '-c', config_path
         ]
         

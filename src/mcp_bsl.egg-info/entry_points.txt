@@ -1,2 +1,0 @@
-[console_scripts]
-mcp-bsl-server = mcp_bsl.server:main
