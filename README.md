@@ -14,7 +14,7 @@ MCP-сервер для интеграции BSL Language Server, обеспеч
 
 * Python 3.10 или новее
 * Java Runtime Environment (JRE) 8 или новее
-* JAR-файл BSL Language Server
+* [JAR-файл BSL Language Server](https://github.com/1c-syntax/bsl-language-server/releases)
 
 ### Установка из исходников
 
@@ -263,8 +263,7 @@ python -m build
 1. Сделайте форк репозитория
 2. Создайте feature-ветку
 3. Внесите изменения
-4. Добавьте тесты для новой функциональности
-5. Отправьте pull request
+4. Отправьте pull request
 
 ## Поддержка
 
