@@ -1,60 +1,47 @@
-# BSL MCP Server (Python)
+# BSL MCP Server 
 
-MCP server for integrating BSL Language Server with Model Context Protocol, providing analysis and formatting capabilities for 1C files (*.bsl, *.os).
+MCP-сервер для интеграции BSL Language Server, обеспечивающий анализ и форматирование файлов 1C Предприятие 8.3 (*.bsl, *.os).
 
-## Features
+## Возможности
 
-- **BSL Analysis**: Run comprehensive analysis on BSL/OS files with detailed diagnostics
-- **Code Formatting**: Format BSL files according to BSL Language Server rules
-- **Flexible Input**: Support for single files or entire directories
-- **Multiple Output Formats**: Both human-readable summaries and structured JSON
-- **Configurable**: Customizable JVM memory limits and configuration files
+* **BSL-анализ**: запуск комплексного анализа файлов BSL/OS с подробной диагностикой
+* **Форматирование кода**: приведение BSL-файлов к правилам BSL Language Server
+* **Гибкий ввод**: проверка каталогов
 
-## Installation
+## Установка
 
-### Prerequisites
+### Предварительные требования
 
-- Python 3.10 or higher
-- Java Runtime Environment (JRE) 8 or higher
-- BSL Language Server JAR file
+* Python 3.10 или новее
+* Java Runtime Environment (JRE) 8 или новее
+* JAR-файл BSL Language Server
 
-### Install from Source
+### Установка из исходников
 
-1. Clone the repository:
+1. Клонируйте репозиторий:
+
 ```bash
 git clone <repository-url>
 cd mcp-bsl-python
 ```
 
-2. Install dependencies:
+2. Установите зависимости:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Install the package:
+3. Установите пакет:
+
 ```bash
 pip install -e .
 ```
 
-## Configuration
+## Настройка
 
-### Environment Variables
+### Конфигурация MCP
 
-Set the following environment variable:
-
-```bash
-export BSL_JAR="/path/to/bsl-language-server-0.24.2-exec.jar"
-```
-
-Optional environment variables:
-```bash
-export BSL_MEMORY_MB="4096"    # JVM memory limit in MB (default: 4096)
-export BSL_LOG_LEVEL="ERROR"   # Logging level: ERROR, WARNING, INFO, DEBUG (default: WARNING)
-```
-
-### MCP Configuration
-
-Add to your `~/.cursor/mcp.json`:
+Добавьте в `~/.cursor/mcp.json`:
 
 ```json
 {
@@ -74,22 +61,22 @@ Add to your `~/.cursor/mcp.json`:
 }
 ```
 
-> **Note:** `BSL_LOG_LEVEL` is set to `ERROR` to minimize log output in Cursor IDE. Use `DEBUG` for troubleshooting.
+> **Примечание:** значение `BSL_LOG_LEVEL` установлено в `ERROR`, чтобы минимизировать вывод логов в Cursor IDE. Для поиска проблем используйте `DEBUG`.
 
-## Usage
+## Использование
 
-### Available Tools
+### Доступные инструменты
 
 #### `bsl_analyze`
 
-Run BSL analysis on source directory or file.
+Запуск анализа BSL по каталогу исходников или файлу.
 
-**Parameters:**
-- `srcDir` (required): Path to directory or file with .bsl/.os files
-- `configPath` (optional): Path to .bsl-language-server.json configuration file
-- `memoryMb` (optional): JVM memory limit in MB (default: 4096)
+**Параметры:**
 
-**Example:**
+* `srcDir` (обязательно): путь к каталогу или файлу с .bsl/.os
+
+**Пример:**
+
 ```json
 {
   "name": "bsl_analyze",
@@ -101,12 +88,14 @@ Run BSL analysis on source directory or file.
 
 #### `bsl_format`
 
-Format BSL files in source directory.
+Форматирование BSL-файлов в каталоге исходников.
 
-**Parameters:**
-- `srcDir` (required): Path to directory or file with .bsl/.os files
+**Параметры:**
 
-**Example:**
+* `srcDir` (обязательно): путь к каталогу или файлу с .bsl/.os
+
+**Пример:**
+
 ```json
 {
   "name": "bsl_format",
@@ -116,34 +105,37 @@ Format BSL files in source directory.
 }
 ```
 
-### Output Formats
+### Форматы вывода
 
-#### Analysis Results
+#### Результаты анализа
 
-The `bsl_analyze` tool provides:
+Инструмент `bsl_analyze` выдает:
 
-1. **Human-readable summary** with:
-   - Status (success/error)
-   - Number of files processed
-   - Diagnostic counts by severity
-   - Top issues with file locations
+1. **Человекочитаемую сводку** с:
 
-2. **Structured JSON output** with:
-   - Complete diagnostic information
-   - File paths, line/column numbers
-   - Severity levels and messages
-   - Summary statistics
+   * статусом (success/error)
+   * количеством обработанных файлов
+   * подсчетом диагностик по уровням важности
+   * топ-проблемами с указанием местоположения в файлах
 
-#### Formatting Results
+2. **Структурированный JSON-вывод** с:
 
-The `bsl_format` tool provides:
-- Success/failure status
-- Number of files processed
-- Raw output from BSL Language Server
+   * полной диагностической информацией
+   * путями к файлам, номерами строк/столбцов
+   * уровнями важности и сообщениями
+   * сводной статистикой
 
-## BSL Language Server Configuration
+#### Результаты форматирования
 
-Create a `.bsl-language-server.json` file in your project root:
+Инструмент `bsl_format` выдает:
+
+* статус успех/ошибка
+* количество обработанных файлов
+* сырой вывод BSL Language Server
+
+## Конфигурация BSL Language Server
+
+Создайте файл `.bsl-language-server.json` в корне проекта:
 
 ```json
 {
@@ -162,90 +154,92 @@ Create a `.bsl-language-server.json` file in your project root:
 }
 ```
 
-## Error Handling
+## Обработка ошибок
 
-The server handles various error conditions:
+Сервер обрабатывает различные нештатные ситуации:
 
-- **File not found**: Validates source paths before execution
-- **Invalid JAR**: Checks BSL Language Server JAR file existence
-- **Timeout**: 5-minute timeout for analysis, 2-minute for formatting
-- **Memory limits**: Configurable JVM memory allocation
-- **Parse errors**: Graceful handling of malformed BSL output
+* **Файл не найден**: проверяет корректность путей до запуска
+* **Неверный JAR**: проверяет наличие JAR-файла BSL Language Server
+* **Таймаут**: 5 минут для анализа, 2 минуты для форматирования
+* **Лимиты памяти**: настраиваемое выделение памяти JVM
+* **Ошибки разбора**: корректная обработка некорректного вывода BSL
 
-## Development
+## Разработка
 
-### Project Structure
+### Структура проекта
 
 ```
 mcp-bsl-python/
-├── pyproject.toml          # Project metadata and dependencies
-├── requirements.txt        # Dependencies
-├── README.md              # This file
+├── pyproject.toml          # Метаданные проекта и зависимости
+├── requirements.txt        # Зависимости
+├── README.md               # Этот файл
 ├── src/
 │   └── mcp_bsl/
 │       ├── __init__.py
-│       ├── server.py      # Main MCP server implementation
-│       ├── bsl_runner.py  # BSL jar execution wrapper
-│       └── config.py      # Configuration management
-└── .bsl-language-server.json  # Example BSL config
+│       ├── server.py       # Основная реализация MCP-сервера
+│       ├── bsl_runner.py   # Обертка запуска JAR BSL
+│       └── config.py       # Управление конфигурацией
+└── .bsl-language-server.json  # Пример конфигурации BSL
 ```
 
-### Running Tests
+### Запуск тестов
 
 ```bash
 python -m pytest tests/
 ```
 
-### Building
+### Сборка
 
 ```bash
 python -m build
 ```
 
-## Troubleshooting
+## Устранение неполадок
 
-### Common Issues
-
-1. **"BSL_JAR environment variable is required"**
-   - Set the `BSL_JAR` environment variable to the correct path
-   - Ensure the JAR file exists and is readable
+### Типичные проблемы
 
 2. **"Source path does not exist"**
-   - **Always use absolute paths** (e.g., `C:\dev\project\src\Module.bsl`)
-   - Relative paths may not work correctly with MCP server
-   - See [PATH_USAGE_GUIDE.md](PATH_USAGE_GUIDE.md) for detailed path usage instructions
-   - Verify the `srcDir` parameter points to an existing file or directory
-   - Check file permissions
+
+   * **Всегда используйте абсолютные пути** (например, `C:\dev\project\src\Module.bsl`)
+   * Относительные пути могут работать некорректно с MCP-сервером
+   * См. [PATH_USAGE_GUIDE.md](PATH_USAGE_GUIDE.md) для подробностей
+   * Проверьте, что параметр `srcDir` указывает на существующий файл или каталог
+   * Проверьте права доступа к файлам
 
 3. **"Directory contains no BSL/OS files"**
-   - Ensure the directory contains `.bsl` or `.os` files
-   - Check file extensions are correct
 
-4. **Java execution errors**
-   - Verify Java is installed and accessible in PATH
-   - Check JVM memory limits are reasonable
-   - Ensure BSL Language Server JAR is compatible with your Java version
+   * Убедитесь, что каталог содержит файлы `.bsl` или `.os`
+   * Проверьте корректность расширений файлов
 
-5. **Seeing "ERROR: BSL analysis stderr detected"**
-   - This was fixed - progress bar output is now filtered out
-   - Only real errors are shown
-   - Update to the latest version if you see this issue
+4. **Ошибки выполнения Java**
 
-6. **Log messages appearing twice**
-   - This was fixed - duplicate handler accumulation resolved
-   - Each log message now appears exactly once
-   - See [FIX_DUPLICATE_LOGS.md](FIX_DUPLICATE_LOGS.md) for details
+   * Проверьте, что Java установлена и доступна в PATH
+   * Убедитесь, что лимиты памяти JVM заданы разумно
+   * Проверьте совместимость версии JAR BSL Language Server с вашей версией Java
 
-### Debug Mode and Logging
+5. **Сообщение "ERROR: BSL analysis stderr detected"**
 
-The server supports different logging levels controlled via the `BSL_LOG_LEVEL` environment variable:
+   * Проблема исправлена — вывод прогресс-бара теперь фильтруется
+   * Отображаются только реальные ошибки
+   * Обновитесь до последней версии, если видите эту проблему
 
-- **ERROR** (recommended for production) - Only critical errors
-- **WARNING** (default) - Warnings and errors
-- **INFO** - Informational messages
-- **DEBUG** - Detailed debug information
+6. **Дублирование сообщений логов**
 
-To enable debug logging in MCP configuration:
+   * Проблема исправлена — устранено накопление обработчиков
+   * Каждое сообщение лога теперь выводится ровно один раз
+   * См. [FIX_DUPLICATE_LOGS.md](FIX_DUPLICATE_LOGS.md) для деталей
+
+### Режим отладки и логирование
+
+Сервер поддерживает уровни логирования, управляемые переменной окружения `BSL_LOG_LEVEL`:
+
+* **ERROR** (рекомендуется для продакшена) — только критические ошибки
+* **WARNING** (по умолчанию) — предупреждения и ошибки
+* **INFO** — информационные сообщения
+* **DEBUG** — подробная отладочная информация
+
+Чтобы включить отладочное логирование в конфигурации MCP:
+
 ```json
 {
   "mcpServers": {
@@ -258,23 +252,24 @@ To enable debug logging in MCP configuration:
 }
 ```
 
-For more details, see [LOGGING_CONFIGURATION.md](LOGGING_CONFIGURATION.md).
+Подробности см. в [LOGGING_CONFIGURATION.md](LOGGING_CONFIGURATION.md).
 
-## License
+## Лицензия
 
-This project is licensed under the MIT License.
+Проект распространяется по лицензии MIT.
 
-## Contributing
+## Вклад в проект
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
+1. Сделайте форк репозитория
+2. Создайте feature-ветку
+3. Внесите изменения
+4. Добавьте тесты для новой функциональности
+5. Отправьте pull request
 
-## Support
+## Поддержка
 
-For issues and questions:
-- Create an issue in the repository
-- Check existing documentation
-- Review BSL Language Server documentation
+Если у вас есть вопросы или вы столкнулись с проблемами:
+
+* Создайте issue в репозитории
+* Изучите существующую документацию
+* Ознакомьтесь с документацией BSL Language Server
