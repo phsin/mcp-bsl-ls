@@ -201,10 +201,10 @@ class BSLRunner:
     def format(self, src_dir: str) -> BSLResult:
         """
         Format BSL files in source directory.
-        
+
         Args:
             src_dir: Path to directory or file with .bsl/.os files
-            
+
         Returns:
             BSLResult with formatting status
         """
@@ -213,11 +213,11 @@ class BSLRunner:
             # Validate input
             self.logger.debug("Validating input parameters")
             source_path = validate_source_path(src_dir)
-            
+
             # Build command
             cmd = self._build_format_command(source_path)
             self.logger.debug(f"Built format command: {' '.join(cmd)}")
-            
+
             # Execute command with safe environment
             self.logger.info("Executing BSL formatting command")
             env = self._get_safe_environment()
@@ -229,25 +229,25 @@ class BSLRunner:
                 timeout=120,  # 2 minutes timeout
                 env=env
             )
-            
+
             self.logger.info(f"Formatting command completed with return code: {result.returncode}")
             self.logger.debug(f"STDOUT length: {len(result.stdout)}, STDERR length: {len(result.stderr)}")
-            
+
             # Filter out progress bar from stderr
             stderr_filtered = result.stderr
             if result.stderr:
                 stderr_lines = result.stderr.split('\n')
                 error_lines = [
-                    line for line in stderr_lines 
+                    line for line in stderr_lines
                     if line.strip() and not line.strip().startswith('Analyzing files')
                 ]
                 stderr_filtered = '\n'.join(error_lines) if error_lines else ""
                 if not error_lines:
                     self.logger.debug(f"Format progress: {stderr_lines[:2]}")
-            
+
             files_processed = self._count_processed_files(source_path)
             self.logger.info(f"Formatting completed - files processed: {files_processed}")
-            
+
             return BSLResult(
                 success=result.returncode == 0,
                 diagnostics=[],
@@ -255,7 +255,7 @@ class BSLRunner:
                 error=stderr_filtered,
                 files_processed=files_processed
             )
-            
+
         except subprocess.TimeoutExpired:
             self.logger.error("BSL formatting timed out after 2 minutes")
             return BSLResult(
@@ -271,6 +271,83 @@ class BSLRunner:
                 diagnostics=[],
                 output="",
                 error=f"Error running BSL formatting: {str(e)}"
+            )
+
+    def check_syntax(self,
+                     ib_connection: str,
+                     db_user: Optional[str] = None,
+                     db_pwd: Optional[str] = None,
+                     groupbymetadata: bool = True,
+                     junitpath: Optional[str] = None) -> BSLResult:
+        """
+        Run syntax check using vanessa-runner.
+
+        Args:
+            ib_connection: Connection string to 1C infobase (e.g., "/F/path/to/base" or "/Sserver/base")
+            db_user: Database user (optional)
+            db_pwd: Database password (optional)
+            groupbymetadata: Group results by metadata (default: True)
+            junitpath: Path to save JUnit report (optional)
+
+        Returns:
+            BSLResult with syntax check results
+        """
+        self.logger.info(f"Starting syntax check for infobase: {ib_connection}")
+
+        try:
+            # Build command
+            cmd = self._build_syntax_check_command(
+                ib_connection,
+                db_user,
+                db_pwd,
+                groupbymetadata,
+                junitpath
+            )
+            self.logger.debug(f"Built syntax check command: {' '.join(cmd)}")
+
+            # Execute command with safe environment
+            self.logger.info("Executing vanessa-runner syntax-check command")
+            env = self._get_safe_environment()
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding='utf-8',
+                timeout=600,  # 10 minutes timeout
+                env=env
+            )
+
+            self.logger.info(f"Syntax check completed with return code: {result.returncode}")
+            self.logger.debug(f"STDOUT length: {len(result.stdout)}, STDERR length: {len(result.stderr)}")
+
+            # Parse diagnostics from output
+            diagnostics = self._parse_syntax_check_output(result.stdout, result.stderr)
+
+            self.logger.info(f"Syntax check completed - diagnostics: {len(diagnostics)}")
+
+            return BSLResult(
+                success=result.returncode == 0,
+                diagnostics=diagnostics,
+                output=result.stdout,
+                error=result.stderr,
+                files_processed=0  # vanessa-runner doesn't report file count
+            )
+
+        except subprocess.TimeoutExpired:
+            self.logger.error("Syntax check timed out after 10 minutes")
+            return BSLResult(
+                success=False,
+                diagnostics=[],
+                output="",
+                error="Syntax check timed out after 10 minutes"
+            )
+        except Exception as e:
+            self.logger.error(f"Error running syntax check: {str(e)}", exc_info=True)
+            return BSLResult(
+                success=False,
+                diagnostics=[],
+                output="",
+                error=f"Error running syntax check: {str(e)}"
             )
     
     def _build_analyze_command(self, 
@@ -315,6 +392,33 @@ class BSLRunner:
             '--format',
             '--src', str(source_path)
         ]
+
+    def _build_syntax_check_command(self,
+                                     ib_connection: str,
+                                     db_user: Optional[str],
+                                     db_pwd: Optional[str],
+                                     groupbymetadata: bool,
+                                     junitpath: Optional[str]) -> List[str]:
+        """Build syntax check command for vanessa-runner."""
+        cmd = [
+            'vrunner',
+            'syntax-check',
+            '--ibconnection', ib_connection
+        ]
+
+        if db_user:
+            cmd.extend(['--db-user', db_user])
+
+        if db_pwd:
+            cmd.extend(['--db-pwd', db_pwd])
+
+        if groupbymetadata:
+            cmd.append('--groupbymetadata')
+
+        if junitpath:
+            cmd.extend(['--junitpath', junitpath])
+
+        return cmd
     
     def _parse_analyze_output(self, stdout: str, stderr: str) -> List[BSLDiagnostic]:
         """Parse BSL analyze output into diagnostics."""
@@ -466,13 +570,56 @@ class BSLRunner:
         if source_path.is_file():
             self.logger.debug(f"Counting single file: {source_path}")
             return 1
-        
+
         bsl_files = list(source_path.glob('**/*.bsl'))
         os_files = list(source_path.glob('**/*.os'))
         total_files = len(bsl_files) + len(os_files)
-        
+
         self.logger.debug(f"Found {len(bsl_files)} .bsl files and {len(os_files)} .os files, total: {total_files}")
         return total_files
+
+    def _parse_syntax_check_output(self, stdout: str, stderr: str) -> List[BSLDiagnostic]:
+        """Parse vanessa-runner syntax check output into diagnostics."""
+        self.logger.debug("Parsing vanessa-runner syntax check output")
+        diagnostics = []
+
+        # Combine stdout and stderr
+        output = stdout + '\n' + stderr
+
+        # Parse output line by line
+        for line in output.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+
+            # Try to detect error patterns
+            # Common patterns in vanessa-runner output:
+            # - "Ошибка: <message>" or "Error: <message>"
+            # - Lines containing "Модуль:" or "Module:"
+            # - Lines containing file paths with line numbers
+
+            # Pattern 1: Direct error messages
+            if 'ошибка' in line.lower() or 'error' in line.lower():
+                diagnostics.append(BSLDiagnostic(
+                    file='',
+                    line=0,
+                    column=0,
+                    severity='error',
+                    message=line
+                ))
+
+            # Pattern 2: Warning messages
+            elif 'предупреждение' in line.lower() or 'warning' in line.lower():
+                diagnostics.append(BSLDiagnostic(
+                    file='',
+                    line=0,
+                    column=0,
+                    severity='warning',
+                    message=line
+                ))
+
+        self.logger.info(f"Parsed {len(diagnostics)} diagnostics from syntax check output")
+        return diagnostics
     
     def _create_temp_config(self) -> Path:
         """Create minimal temporary configuration file to avoid directory traversal."""

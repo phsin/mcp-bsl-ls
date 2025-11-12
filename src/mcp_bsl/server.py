@@ -105,6 +105,36 @@ class BSLMCPServer:
                             },
                             "required": ["srcDir"]
                         }
+                    ),
+                    Tool(
+                        name="check_syntax",
+                        description="Run syntax check using vanessa-runner",
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "ibConnection": {
+                                    "type": "string",
+                                    "description": "Connection string to 1C infobase (e.g., '/F/path/to/base' or '/Sserver/base')"
+                                },
+                                "dbUser": {
+                                    "type": "string",
+                                    "description": "Database user (optional)"
+                                },
+                                "dbPwd": {
+                                    "type": "string",
+                                    "description": "Database password (optional)"
+                                },
+                                "groupbymetadata": {
+                                    "type": "boolean",
+                                    "description": "Group results by metadata (default: true)"
+                                },
+                                "junitpath": {
+                                    "type": "string",
+                                    "description": "Path to save JUnit report (optional)"
+                                }
+                            },
+                            "required": ["ibConnection"]
+                        }
                     )
                 ]
             )
@@ -126,6 +156,9 @@ class BSLMCPServer:
                 elif name == "bsl_format":
                     self.logger.debug("Calling bsl_format handler")
                     return await self._handle_format(arguments)
+                elif name == "check_syntax":
+                    self.logger.debug("Calling check_syntax handler")
+                    return await self._handle_check_syntax(arguments)
                 else:
                     self.logger.warning(f"Unknown tool requested: {name}")
                     return [TextContent(type="text", text=f"Unknown tool: {name}")]
@@ -173,27 +206,57 @@ class BSLMCPServer:
     async def _handle_format(self, arguments: Dict[str, Any]):
         """Handle bsl_format tool call."""
         src_dir = arguments.get("srcDir")
-        
+
         self.logger.info(f"Starting BSL formatting for directory: {src_dir}")
-        
+
         if not src_dir:
             self.logger.error("srcDir parameter is required but not provided")
             return [TextContent(type="text", text="Error: srcDir parameter is required")]
-        
+
         # If src_dir is a file, use its parent directory instead
         path = Path(src_dir)
         if path.exists() and path.is_file():
             self.logger.info(f"srcDir is a file: {src_dir}. Using parent directory instead.")
             src_dir = str(path.parent)
             self.logger.info(f"Formatting parent directory: {src_dir}")
-        
+
         # Run formatting in thread pool to avoid blocking
         self.logger.debug("Running formatting in thread pool")
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, self.runner.format, src_dir)
-        
+
         self.logger.info(f"Formatting completed. Success: {result.success}, Files processed: {result.files_processed}")
         return self._format_format_result(result)
+
+    async def _handle_check_syntax(self, arguments: Dict[str, Any]):
+        """Handle check_syntax tool call."""
+        ib_connection = arguments.get("ibConnection")
+        db_user = arguments.get("dbUser")
+        db_pwd = arguments.get("dbPwd")
+        groupbymetadata = arguments.get("groupbymetadata", True)
+        junitpath = arguments.get("junitpath")
+
+        self.logger.info(f"Starting syntax check for infobase: {ib_connection}")
+
+        if not ib_connection:
+            self.logger.error("ibConnection parameter is required but not provided")
+            return [TextContent(type="text", text="Error: ibConnection parameter is required")]
+
+        # Run syntax check in thread pool to avoid blocking
+        self.logger.debug("Running syntax check in thread pool")
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None,
+            self.runner.check_syntax,
+            ib_connection,
+            db_user,
+            db_pwd,
+            groupbymetadata,
+            junitpath
+        )
+
+        self.logger.info(f"Syntax check completed. Success: {result.success}, Diagnostics: {len(result.diagnostics)}")
+        return self._format_check_syntax_result(result)
     
     def _format_analyze_result(self, result: BSLResult):
         """Format analysis result for MCP response."""
@@ -273,7 +336,7 @@ class BSLMCPServer:
         else:
             status = "❌ Formatting failed"
             message = f"Failed to format files. Error: {result.error}"
-        
+
         output_lines = [
             f"## BSL Formatting Results",
             f"**Status:** {status}",
@@ -281,7 +344,7 @@ class BSLMCPServer:
             f"**Files processed:** {result.files_processed}",
             ""
         ]
-        
+
         if result.output:
             output_lines.extend([
                 "## Output",
@@ -289,7 +352,7 @@ class BSLMCPServer:
                 result.output,
                 "```"
             ])
-        
+
         if result.error:
             output_lines.extend([
                 "## Error Output",
@@ -297,8 +360,86 @@ class BSLMCPServer:
                 result.error,
                 "```"
             ])
-        
+
         return [TextContent(type="text", text="\n".join(output_lines))]
+
+    def _format_check_syntax_result(self, result: BSLResult):
+        """Format syntax check result for MCP response."""
+        if result.success:
+            status = "✅ Syntax check completed successfully"
+        else:
+            status = "❌ Syntax check completed with errors"
+
+        # Create summary
+        summary_lines = [
+            f"## Syntax Check Results",
+            f"**Status:** {status}",
+            f"**Total diagnostics:** {len(result.diagnostics)}",
+            ""
+        ]
+
+        # Group diagnostics by severity
+        errors = [d for d in result.diagnostics if d.severity == 'error']
+        warnings = [d for d in result.diagnostics if d.severity == 'warning']
+        infos = [d for d in result.diagnostics if d.severity == 'info']
+
+        if errors:
+            summary_lines.extend([
+                f"**Errors:** {len(errors)}",
+                ""
+            ])
+            for diag in errors:
+                if diag.file:
+                    summary_lines.append(f"🔴 **{diag.file}:{diag.line}:{diag.column}** - {diag.message}")
+                else:
+                    summary_lines.append(f"🔴 {diag.message}")
+            summary_lines.append("")
+
+        if warnings:
+            summary_lines.extend([
+                f"**Warnings:** {len(warnings)}",
+                ""
+            ])
+            for diag in warnings:
+                if diag.file:
+                    summary_lines.append(f"🟡 **{diag.file}:{diag.line}:{diag.column}** - {diag.message}")
+                else:
+                    summary_lines.append(f"🟡 {diag.message}")
+            summary_lines.append("")
+
+        if infos:
+            summary_lines.extend([
+                f"**Info messages:** {len(infos)}",
+                ""
+            ])
+            for diag in infos:
+                if diag.file:
+                    summary_lines.append(f"ℹ️ **{diag.file}:{diag.line}:{diag.column}** - {diag.message}")
+                else:
+                    summary_lines.append(f"ℹ️ {diag.message}")
+            summary_lines.append("")
+
+        # Add full output
+        if result.output and result.output.strip():
+            summary_lines.extend([
+                "",
+                "## Full Output",
+                "```",
+                result.output[:5000] if len(result.output) > 5000 else result.output,
+                "```" + (f"\n... and {len(result.output) - 5000} more characters" if len(result.output) > 5000 else "")
+            ])
+
+        # Add error output if there are issues
+        if result.error and result.error.strip():
+            summary_lines.extend([
+                "",
+                "## Error Output",
+                "```",
+                result.error[:2000] if len(result.error) > 2000 else result.error,
+                "```" + (f"\n... and {len(result.error) - 2000} more characters" if len(result.error) > 2000 else "")
+            ])
+
+        return [TextContent(type="text", text="\n".join(summary_lines))]
     
     async def run(self):
         """Run the MCP server."""
