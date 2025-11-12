@@ -108,32 +108,32 @@ class BSLMCPServer:
                     ),
                     Tool(
                         name="check_syntax",
-                        description="Run syntax check using vanessa-runner",
+                        description="Run syntax check using vanessa-runner. All parameters are optional if configured via environment variables (VRUNNER_IB_CONNECTION, VRUNNER_DB_USER, VRUNNER_DB_PWD, VRUNNER_GROUPBYMETADATA, VRUNNER_JUNITPATH)",
                         inputSchema={
                             "type": "object",
                             "properties": {
                                 "ibConnection": {
                                     "type": "string",
-                                    "description": "Connection string to 1C infobase (e.g., '/F/path/to/base' or '/Sserver/base')"
+                                    "description": "Connection string to 1C infobase (e.g., '/F/path/to/base' or '/Sserver/base'). Optional if VRUNNER_IB_CONNECTION is set"
                                 },
                                 "dbUser": {
                                     "type": "string",
-                                    "description": "Database user (optional)"
+                                    "description": "Database user. Optional if VRUNNER_DB_USER is set"
                                 },
                                 "dbPwd": {
                                     "type": "string",
-                                    "description": "Database password (optional)"
+                                    "description": "Database password. Optional if VRUNNER_DB_PWD is set"
                                 },
                                 "groupbymetadata": {
                                     "type": "boolean",
-                                    "description": "Group results by metadata (default: true)"
+                                    "description": "Group results by metadata. Optional if VRUNNER_GROUPBYMETADATA is set (default: true)"
                                 },
                                 "junitpath": {
                                     "type": "string",
-                                    "description": "Path to save JUnit report (optional)"
+                                    "description": "Path to save JUnit report. Optional if VRUNNER_JUNITPATH is set"
                                 }
                             },
-                            "required": ["ibConnection"]
+                            "required": []
                         }
                     )
                 ]
@@ -233,14 +233,20 @@ class BSLMCPServer:
         ib_connection = arguments.get("ibConnection")
         db_user = arguments.get("dbUser")
         db_pwd = arguments.get("dbPwd")
-        groupbymetadata = arguments.get("groupbymetadata", True)
+        groupbymetadata = arguments.get("groupbymetadata")  # None if not provided
         junitpath = arguments.get("junitpath")
 
-        self.logger.info(f"Starting syntax check for infobase: {ib_connection}")
-
-        if not ib_connection:
-            self.logger.error("ibConnection parameter is required but not provided")
-            return [TextContent(type="text", text="Error: ibConnection parameter is required")]
+        # Log config or argument source
+        if ib_connection:
+            self.logger.info(f"Starting syntax check for infobase: {ib_connection} (from arguments)")
+        elif self.config.vrunner_ib_connection:
+            self.logger.info(f"Starting syntax check for infobase: {self.config.vrunner_ib_connection} (from config)")
+        else:
+            self.logger.error("No infobase connection configured")
+            return [TextContent(
+                type="text",
+                text="Error: infobase connection string is required. Set VRUNNER_IB_CONNECTION environment variable or provide ibConnection parameter"
+            )]
 
         # Run syntax check in thread pool to avoid blocking
         self.logger.debug("Running syntax check in thread pool")

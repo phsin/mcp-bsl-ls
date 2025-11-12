@@ -274,34 +274,51 @@ class BSLRunner:
             )
 
     def check_syntax(self,
-                     ib_connection: str,
+                     ib_connection: Optional[str] = None,
                      db_user: Optional[str] = None,
                      db_pwd: Optional[str] = None,
-                     groupbymetadata: bool = True,
+                     groupbymetadata: Optional[bool] = None,
                      junitpath: Optional[str] = None) -> BSLResult:
         """
         Run syntax check using vanessa-runner.
 
         Args:
-            ib_connection: Connection string to 1C infobase (e.g., "/F/path/to/base" or "/Sserver/base")
-            db_user: Database user (optional)
-            db_pwd: Database password (optional)
-            groupbymetadata: Group results by metadata (default: True)
-            junitpath: Path to save JUnit report (optional)
+            ib_connection: Connection string to 1C infobase. If None, uses config value
+            db_user: Database user. If None, uses config value
+            db_pwd: Database password. If None, uses config value
+            groupbymetadata: Group results by metadata. If None, uses config value
+            junitpath: Path to save JUnit report. If None, uses config value
 
         Returns:
             BSLResult with syntax check results
         """
-        self.logger.info(f"Starting syntax check for infobase: {ib_connection}")
+        # Use config values as defaults
+        ib_conn = ib_connection or self.config.vrunner_ib_connection
+        user = db_user or self.config.vrunner_db_user
+        pwd = db_pwd or self.config.vrunner_db_pwd
+        group = groupbymetadata if groupbymetadata is not None else self.config.vrunner_groupbymetadata
+        junit = junitpath or self.config.vrunner_junitpath
+
+        # Validate that we have at least ib_connection
+        if not ib_conn:
+            self.logger.error("No infobase connection string provided (neither in arguments nor in config)")
+            return BSLResult(
+                success=False,
+                diagnostics=[],
+                output="",
+                error="Error: infobase connection string is required. Set VRUNNER_IB_CONNECTION environment variable or provide ibConnection parameter"
+            )
+
+        self.logger.info(f"Starting syntax check for infobase: {ib_conn}")
 
         try:
             # Build command
             cmd = self._build_syntax_check_command(
-                ib_connection,
-                db_user,
-                db_pwd,
-                groupbymetadata,
-                junitpath
+                ib_conn,
+                user,
+                pwd,
+                group,
+                junit
             )
             self.logger.debug(f"Built syntax check command: {' '.join(cmd)}")
 

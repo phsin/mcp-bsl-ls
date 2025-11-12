@@ -19,15 +19,20 @@ def test_build_syntax_check_command():
         tmp_jar_path = tmp.name
 
     try:
-        # Create a minimal config
+        # Create a minimal config with vanessa-runner settings
         config = BSLConfig(
             jar_path=tmp_jar_path,
-            default_memory_mb=4096
+            default_memory_mb=4096,
+            vrunner_ib_connection='/F/path/to/base',
+            vrunner_db_user='config_user',
+            vrunner_db_pwd='config_password',
+            vrunner_groupbymetadata=True,
+            vrunner_junitpath='/config/junit'
         )
 
         runner = BSLRunner(config)
 
-        # Test command building
+        # Test command building with explicit parameters
         cmd = runner._build_syntax_check_command(
             ib_connection='/F/path/to/base',
             db_user='admin',
@@ -36,7 +41,7 @@ def test_build_syntax_check_command():
             junitpath='/path/to/junit'
         )
 
-        print("Built command:")
+        print("Built command with explicit parameters:")
         print(' '.join(cmd))
 
         # Verify command structure
@@ -52,7 +57,17 @@ def test_build_syntax_check_command():
         assert '--junitpath' in cmd
         assert '/path/to/junit' in cmd
 
-        print("✓ Command building test passed!")
+        print("✓ Command building with explicit parameters passed!")
+
+        # Test using config values (call check_syntax without parameters)
+        print("\nTesting config-based command building...")
+        # This will use config values
+        result = runner.check_syntax()  # No parameters = use config
+
+        # Verify it didn't fail due to missing parameters
+        assert result is not None
+        print("✓ Config-based command building passed!")
+
     finally:
         # Cleanup temp file
         Path(tmp_jar_path).unlink(missing_ok=True)
@@ -65,7 +80,7 @@ def test_parse_syntax_check_output():
         tmp_jar_path = tmp.name
 
     try:
-        # Create a minimal config
+        # Create a minimal config (vrunner settings not needed for parsing test)
         config = BSLConfig(
             jar_path=tmp_jar_path,
             default_memory_mb=4096

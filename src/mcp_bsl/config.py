@@ -8,11 +8,18 @@ from pydantic import BaseModel, Field, validator
 
 class BSLConfig(BaseModel):
     """Configuration for BSL Language Server."""
-    
+
     jar_path: str = Field(..., description="Path to BSL Language Server JAR file")
     default_memory_mb: int = Field(default=4096, description="Default JVM memory limit in MB")
     config_path: Optional[str] = Field(default=None, description="Path to .bsl-language-server.json configuration file")
-    
+
+    # Vanessa-runner syntax check configuration
+    vrunner_ib_connection: Optional[str] = Field(default=None, description="Connection string to 1C infobase")
+    vrunner_db_user: Optional[str] = Field(default=None, description="Database user")
+    vrunner_db_pwd: Optional[str] = Field(default=None, description="Database password")
+    vrunner_groupbymetadata: bool = Field(default=True, description="Group results by metadata")
+    vrunner_junitpath: Optional[str] = Field(default=None, description="Path to save JUnit report")
+
     @validator('jar_path')
     def validate_jar_path(cls, v):
         """Validate that JAR file exists."""
@@ -22,7 +29,7 @@ class BSLConfig(BaseModel):
         if not jar_path.suffix.lower() == '.jar':
             raise ValueError(f"File is not a JAR file: {v}")
         return str(jar_path.absolute())
-    
+
     @validator('default_memory_mb')
     def validate_memory(cls, v):
         """Validate memory limit."""
@@ -31,20 +38,20 @@ class BSLConfig(BaseModel):
         if v > 16384:
             raise ValueError("Memory limit should not exceed 16 GB")
         return v
-    
+
     @validator('config_path')
     def validate_config_path_field(cls, v):
         """Validate configuration file path if provided."""
         if v is None:
             return None
-        
+
         path = pathlib.Path(v)
         if not path.exists():
             raise ValueError(f"Configuration file not found: {v}")
-        
+
         if path.suffix.lower() != '.json':
             raise ValueError(f"Configuration file must be JSON: {v}")
-        
+
         return str(path.absolute())
 
 
@@ -57,14 +64,26 @@ def get_config() -> BSLConfig:
         #    "BSL_JAR environment variable is required. "
         #    "Set it to the path of bsl-language-server JAR file."
         #)
-    
+
     memory_mb = int(os.getenv('BSL_MEMORY_MB', '4096'))
     config_path = os.getenv('BSL_CONFIG')
-    
+
+    # Vanessa-runner configuration
+    vrunner_ib_connection = os.getenv('VRUNNER_IB_CONNECTION')
+    vrunner_db_user = os.getenv('VRUNNER_DB_USER')
+    vrunner_db_pwd = os.getenv('VRUNNER_DB_PWD')
+    vrunner_groupbymetadata = os.getenv('VRUNNER_GROUPBYMETADATA', 'true').lower() == 'true'
+    vrunner_junitpath = os.getenv('VRUNNER_JUNITPATH')
+
     return BSLConfig(
         jar_path=jar_path,
         default_memory_mb=memory_mb,
-        config_path=config_path
+        config_path=config_path,
+        vrunner_ib_connection=vrunner_ib_connection,
+        vrunner_db_user=vrunner_db_user,
+        vrunner_db_pwd=vrunner_db_pwd,
+        vrunner_groupbymetadata=vrunner_groupbymetadata,
+        vrunner_junitpath=vrunner_junitpath
     )
 
 

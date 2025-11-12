@@ -53,13 +53,30 @@ pip install -e .
         "BSL_JAR": "C:\\1C\\AI\\bsl\\bsl-language-server-0.24.2-exec.jar",
         "BSL_MEMORY_MB": "4096",
         "BSL_CONFIG": "C:\\1C\\AI\\bsl\\.bsl-language-server.json",
-        "BSL_LOG_LEVEL": "ERROR"
+        "BSL_LOG_LEVEL": "ERROR",
+        "VRUNNER_IB_CONNECTION": "/FC:\\1C\\MyBase",
+        "VRUNNER_DB_USER": "admin",
+        "VRUNNER_DB_PWD": "password",
+        "VRUNNER_GROUPBYMETADATA": "true",
+        "VRUNNER_JUNITPATH": "C:\\1C\\reports\\junit"
       },
       "debug": false
     }
   }
 }
 ```
+
+**Переменные окружения:**
+
+* `BSL_JAR` (обязательно): путь к JAR-файлу BSL Language Server
+* `BSL_MEMORY_MB` (опционально): лимит памяти JVM в МБ (по умолчанию: 4096)
+* `BSL_CONFIG` (опционально): путь к файлу конфигурации BSL Language Server
+* `BSL_LOG_LEVEL` (опционально): уровень логирования ERROR/WARNING/INFO/DEBUG (по умолчанию: WARNING)
+* `VRUNNER_IB_CONNECTION` (опционально): строка подключения к информационной базе 1С для проверки синтаксиса
+* `VRUNNER_DB_USER` (опционально): пользователь базы данных
+* `VRUNNER_DB_PWD` (опционально): пароль базы данных
+* `VRUNNER_GROUPBYMETADATA` (опционально): группировать результаты по метаданным (по умолчанию: true)
+* `VRUNNER_JUNITPATH` (опционально): путь для сохранения отчета JUnit
 
 > **Примечание:** значение `BSL_LOG_LEVEL` установлено в `ERROR`, чтобы минимизировать вывод логов в Cursor IDE. Для поиска проблем используйте `DEBUG`.
 
@@ -120,24 +137,33 @@ mcp bsl-mcp C:\1C\lk\src\CommonModules\
 
 **Параметры:**
 
-* `ibConnection` (обязательно): строка подключения к информационной базе 1С (например, `/F/путь/к/базе` или `/Sсервер/база`)
-* `dbUser` (опционально): пользователь базы данных
-* `dbPwd` (опционально): пароль базы данных
-* `groupbymetadata` (опционально): группировать результаты по метаданным (по умолчанию: true)
-* `junitpath` (опционально): путь для сохранения отчета JUnit
+Все параметры опциональны, если настроены через переменные окружения:
 
-**Пример:**
+* `ibConnection` (опционально): строка подключения к информационной базе 1С (например, `/F/путь/к/базе` или `/Sсервер/база`). Используется `VRUNNER_IB_CONNECTION` если не указан
+* `dbUser` (опционально): пользователь базы данных. Используется `VRUNNER_DB_USER` если не указан
+* `dbPwd` (опционально): пароль базы данных. Используется `VRUNNER_DB_PWD` если не указан
+* `groupbymetadata` (опционально): группировать результаты по метаданным. Используется `VRUNNER_GROUPBYMETADATA` если не указан (по умолчанию: true)
+* `junitpath` (опционально): путь для сохранения отчета JUnit. Используется `VRUNNER_JUNITPATH` если не указан
 
+**Примеры:**
+
+С параметрами в аргументах:
 ```json
 {
   "name": "check_syntax",
   "arguments": {
     "ibConnection": "/FC:\\1C\\MyBase",
     "dbUser": "admin",
-    "dbPwd": "password",
-    "groupbymetadata": true,
-    "junitpath": "C:\\1C\\reports\\junit"
+    "dbPwd": "password"
   }
+}
+```
+
+Без параметров (используются значения из переменных окружения):
+```json
+{
+  "name": "check_syntax",
+  "arguments": {}
 }
 ```
 
@@ -145,6 +171,7 @@ mcp bsl-mcp C:\1C\lk\src\CommonModules\
 
 * Установленный OneScript (oscript)
 * Установленный vanessa-runner: `opm install vanessa-runner`
+* Настроенные переменные окружения `VRUNNER_*` в конфигурации MCP (рекомендуется)
 
 ### Форматы вывода
 
